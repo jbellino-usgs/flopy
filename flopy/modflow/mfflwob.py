@@ -193,8 +193,16 @@ class ModflowFlwob(Package):
         f_fbob.write('%s\n' % (self.heading))
 
         # -write sections 1 & 2 : NOTE- what about NOPRINT?
-        f_fbob.write('%10i%10i%10i%10i\n' % (self.nqfb, self.nqcfb,
-                                             self.nqtfb, self.iufbobsv))
+        # f_fbob.write('%10i%10i%10i%10i\n' % (self.nqfb, self.nqcfb,
+        #                                      self.nqtfb, self.iufbobsv))
+        f_fbob.write('{:10d} {:10d} {:10d} {:10d}'.format(self.nqfb,
+                                                          self.nqcfb,
+                                                          self.nqtfb,
+                                                          self.iufbobsv))
+        if self.no_print or 'NOPRINT' in self.options:
+            f_fbob.write('{: >10}'.format('NOPRINT'))
+        f_fbob.write('\n')
+
         f_fbob.write('%10e\n' % (self.tomultfb))  # check format
 
         # -write sections 3-5 looping through observations groups

@@ -376,7 +376,11 @@ class ModflowHob(Package):
         f.write('{:10d}'.format(self.mobs))
         f.write('{:10d}'.format(self.maxm))
         f.write('{:10d}'.format(self.iuhobsv))
-        f.write('{:10.4g}\n'.format(self.hobdry))
+        f.write('{:10.4g}'.format(self.hobdry))
+
+        if self.no_print or 'NOPRINT' in self.options:
+            f.write('{: >10}'.format('NOPRINT'))
+        f.write('\n')
 
         # write dataset 2
         f.write('{:10.4g}\n'.format(self.tomulth))
