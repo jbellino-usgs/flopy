@@ -1,10 +1,10 @@
-__author__ = 'emorway'
-
 import sys
 import numpy as np
 
 from ..pakbase import Package
 from ..utils import Util2d, MfList
+
+__author__ = 'emorway'
 
 
 class Mt3dSft(Package):
@@ -485,10 +485,7 @@ class Mt3dSft(Package):
         # Item 1 (NSFINIT, MXSFBC, ICBCSF, IOUTOBS, IETSFR)
         line = f.readline()
         if line[0] == '#':
-            if model.verbose:
-                print('   SFT package currently does not support comment ' \
-                      'lines...')
-                sys.exit()
+            raise ValueError('SFT package does not support comment lines')
 
         if model.verbose:
             print('   loading nsfinit, mxsfbc, icbcsf, ioutobs, ietsfr...')
@@ -521,10 +518,8 @@ class Mt3dSft(Package):
 
         vals = line.strip().split()
 
-        if len(vals) < 7 and model.verbose:
-            print('   not enough values specified in item 2 of SFT input \
-                      file, exiting...')
-            sys.exit()
+        if len(vals) < 7:
+            raise ValueError('expected 7 values for item 2 of SFT input file')
         else:
             isfsolv = int(vals[0])
             wimp = float(vals[1])
@@ -559,7 +554,7 @@ class Mt3dSft(Package):
                       'read COLDSF')
 
 
-        coldsf = Util2d.load(f, model, (1, nsfinit), np.float32, 'coldsf1',
+        coldsf = Util2d.load(f, model, (nsfinit,), np.float32, 'coldsf1',
                              ext_unit_dict, array_format=model.array_format)
 
         kwargs = {}
@@ -568,7 +563,7 @@ class Mt3dSft(Package):
                 name = "coldsf" + str(icomp)
                 if model.verbose:
                     print('   loading {}...'.format(name))
-                u2d = Util2d.load(f, model, (1,nsfinit), np.float32,
+                u2d = Util2d.load(f, model, (nsfinit,), np.float32,
                                   name, ext_unit_dict, array_format=model.array_format)
                 kwargs[name] = u2d
 
@@ -582,14 +577,14 @@ class Mt3dSft(Package):
                 print('   Using historic MT3DMS array reader utilities to ' \
                       'read DISPSF')
 
-        dispsf = Util2d.load(f, model, (1, nsfinit), np.float32, 'dispsf1',
+        dispsf = Util2d.load(f, model, (nsfinit,), np.float32, 'dispsf1',
                              ext_unit_dict, array_format=model.array_format)
         if ncomp > 1:
             for icomp in range(2, ncomp + 1):
                 name = "dispsf" + str(icomp)
                 if model.verbose:
                     print('   loading {}...'.format(name))
-                u2d = Util2d.load(f, model, (1,nsfinit), np.float32,
+                u2d = Util2d.load(f, model, (nsfinit,), np.float32,
                                   name, ext_unit_dict, array_format=model.array_format)
                 kwargs[name] = u2d
 

@@ -1,10 +1,10 @@
-__author__ = 'emorway'
-
 import sys
 import numpy as np
 
 from ..pakbase import Package
-from ..utils import Util2d, read1d, MfList
+from ..utils import Util2d, MfList
+
+__author__ = 'emorway'
 
 
 class Mt3dLkt(Package):
@@ -313,10 +313,7 @@ class Mt3dLkt(Package):
         # Item 1 (NLKINIT,MXLKBC,ICBCLK,IETLAK)
         line = f.readline()
         if line[0] == '#':
-            if model.verbose:
-                print(
-                    '   LKT package currently does not support comment lines...')
-                sys.exit()
+            raise ValueError('LKT package does not support comment lines')
 
         if model.verbose:
             print('   loading nlkinit,mxlkbc,icbclk,ietlak   ')
@@ -349,7 +346,7 @@ class Mt3dLkt(Package):
                     print('   Using historic MT3DMS array reader utilities to ' \
                           'read COLDLAK')
 
-        coldlak = Util2d.load(f, model, (1, nlkinit), np.float32, 'coldlak1',
+        coldlak = Util2d.load(f, model, (nlkinit,), np.float32, 'coldlak1',
                               ext_unit_dict, array_format=model.array_format)
 
         kwargs = {}
@@ -358,7 +355,7 @@ class Mt3dLkt(Package):
                 name = "coldlak" + str(icomp)
                 if model.verbose:
                     print('   loading {}...'.format(name))
-                u2d = Util2d.load(f, model, (1,nlkinit), np.float32,
+                u2d = Util2d.load(f, model, (nlkinit,), np.float32,
                                   name, ext_unit_dict, array_format=model.array_format)
                 kwargs[name] = u2d
 
