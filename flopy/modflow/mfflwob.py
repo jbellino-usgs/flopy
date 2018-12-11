@@ -134,6 +134,7 @@ class ModflowFlwob(Package):
         if extension is None:
             extension = ['chob', 'obc', 'gbob', 'obg', 'drob', 'obd',
                          'rvob', 'obr']
+
         pakunits = {'chob': 40,
                     'gbob': 41,
                     'drob': 42,
@@ -142,9 +143,6 @@ class ModflowFlwob(Package):
                     'gbob': 141,
                     'drob': 142,
                     'rvob': 143}
-
-        # if unitnumber is None:
-        #     unitnumber = [40, 140, 41, 141, 42, 142, 43, 143]
 
         if flowtype.upper().strip() == 'CHD':
             name = ['CHOB', 'DATA']
@@ -192,6 +190,12 @@ class ModflowFlwob(Package):
         elif isinstance(filenames, list):
             if len(filenames) < 2:
                 filenames.append(None)
+
+        if filenames[1] is None:
+            fname = filenames[1]
+            model.add_output_file(iufbobsv, fname=fname,
+                                  extension=extension, binflag=False,
+                                  package=name[0])
 
         # call base package constructor
         Package.__init__(self, model, extension=extension, name=name,
@@ -266,7 +270,7 @@ class ModflowFlwob(Package):
         # write header
         f_fbob.write('{}\n'.format(self.heading))
 
-        # write sections 1 and 2 : NOTE- what about NOPRINT?
+        # write sections 1 and 2
         line = '{:10d}'.format(self.nqfb)
         line += '{:10d}'.format(self.nqcfb)
         line += '{:10d}'.format(self.nqtfb)
@@ -495,7 +499,7 @@ class ModflowFlwob(Package):
                     model.get_ext_dict_attr(ext_unit_dict, unit=iufbobsv)
                 model.add_pop_key_list(iufbobsv)
 
-        # create hob object instance
+        # create ModflowFlwob object instance
         flwob = ModflowFlwob(model, iufbobsv=iufbobsv, tomultfb=tomultfb,
                              nqfb=nqfb, nqcfb=nqcfb,
                              nqtfb=nqtfb, nqobfb=nqobfb, nqclfb=nqclfb,
