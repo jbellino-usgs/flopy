@@ -54,7 +54,7 @@ def test_hob_simple():
 
     # run the modflow-2005 model
     if run:
-        success, buff = m.run_model(silent=False)
+        success, buff = m.run_model(silent=True)
         assert success, 'could not run simple MODFLOW-2005 model'
 
     return
@@ -78,12 +78,12 @@ def test_obs_load_and_write():
         shutil.copyfile(src, dst)
 
     # load the modflow model
-    mf = flopy.modflow.Modflow.load('tc1-true.nam', verbose=True,
+    mf = flopy.modflow.Modflow.load('tc1-true.nam', verbose=False, forgive=False,
                                     model_ws=opth, exe_name=exe_name)
 
     # run the modflow-2005 model
     if run:
-        success, buff = mf.run_model(silent=False)
+        success, buff = mf.run_model(silent=True)
         assert success, 'could not run original MODFLOW-2005 model'
 
         try:
@@ -102,7 +102,7 @@ def test_obs_load_and_write():
 
     # run the modflow-2005 model
     if run:
-        success, buff = mf.run_model(silent=False)
+        success, buff = mf.run_model(silent=True)
         assert success, 'could not run new MODFLOW-2005 model'
 
         # compare parent results
@@ -137,7 +137,7 @@ def test_obs_create_and_write():
         shutil.copyfile(src, dst)
 
     # load the modflow model
-    mf = flopy.modflow.Modflow.load('tc1-true.nam', verbose=True,
+    mf = flopy.modflow.Modflow.load('tc1-true.nam', verbose=False,
                                     model_ws=opth, exe_name=exe_name,
                                     forgive=False)
     # remove the existing hob package
@@ -225,6 +225,34 @@ def test_hob_options():
                                    obs_data=[obs], options=['NOPRINT'],
                                    filenames=filenames)
 
+    # Write the model input files
+    m.write_input()
+
+    print(m.get_output(unit=51))
+    print(f_out)
+    assert m.get_output(unit=51) == f_out, 'output filename ({}) does \
+                                                not match specified name'.format(m.get_output(unit=51))
+
+    assert os.path.isfile(os.path.join(pth, f_in)), 'specified HOB input file not found'
+
+    # run the modflow-2005 model
+    if run:
+        success, buff = m.run_model(silent=False)
+        assert success, 'could not run simple MODFLOW-2005 model'
+
+    return
+
+
+def test_flwob_options():
+    """
+    test041 load and run a simple MODFLOW-2005 FLWOBS example with specified filenames
+    """
+    print('test041 load and run a simple MODFLOW-2005 FLWOBS example with specified filenames')
+    pth = os.path.join(cpth, 'simple')
+    modelname = 'hob_simple'
+    pkglst = ['dis', 'bas6', 'pcg', 'lpf']
+    m = flopy.modflow.Modflow.load(modelname + '.nam', model_ws=pth, check=False,
+                                   load_only=pkglst, verbose=True, exe_name=exe_name)
 
     # add DRN package
     spd = {0: [[0, 5, 5, .5, 8e6],
@@ -249,6 +277,9 @@ def test_hob_options():
     column = [[6], [9]]
     factor = [[1.], [1.]]
 
+    f_in = 'flwobs_simple_custom_name.drob'
+    f_out = 'flwobs_simple_custom_name.obd'
+    filenames = [f_in, f_out]
     drob = flopy.modflow.ModflowFlwob(m,
                                       nqfb=len(nqclfb),
                                       nqcfb=np.sum(nqclfb),
@@ -265,15 +296,19 @@ def test_hob_options():
                                       factor=factor,
                                       flowtype='drn',
                                       options=['NOPRINT'],
-                                      filenames=['flwobs_simple.drob',
-                                                 'flwobs_simple.obd'])
+                                      filenames=filenames)
     # Write the model input files
     m.write_input()
 
-    assert m.get_output(unit=51) == f_out, 'output filename ({}) does \
-                                                not match specified name'.format(m.get_output(unit=51))
+    ## NOTE: When passing output filenames explicitly, the output unit
+    ## is not getting added to output units and is not found by .get_output().
+    print(m.package_units)
+    print(m.get_output(unit=142))
+    print(f_out)
+    assert m.get_output(unit=142) == f_out, 'output filename ({}) does \
+                                                    not match specified name'.format(m.get_output(unit=142))
 
-    assert os.path.isfile(os.path.join(pth, f_in)), 'specified HOB input file not found'
+    assert os.path.isfile(os.path.join(pth, f_in)), 'specified DROB input file not found'
 
     # run the modflow-2005 model
     if run:
@@ -288,3 +323,4 @@ if __name__ == '__main__':
     test_obs_create_and_write()
     test_obs_load_and_write()
     test_hob_options()
+    test_flwob_options()
