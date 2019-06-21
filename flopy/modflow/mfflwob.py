@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 from ..pakbase import Package
+from ..utils.recarray_utils import create_empty_recarray
 
 
 class ModflowFlwob(Package):
@@ -10,65 +11,33 @@ class ModflowFlwob(Package):
 
     Parameters
     ----------
-    nqfb : int
-        Number of cell groups for the head-dependent flow boundary
-        observations
-    nqcfb : int
-        Greater than or equal to the total number of cells in all cell groups
-    nqtfb : int
-        Total number of head-dependent flow boundary observations for all cell
-        groups
+    model : model object
+        The model object (of type :class:`flopy.modflow.mf.Modflow`) to which
+        this package will be added.
     iufbobsv : int
-        unit number where output is saved
+        Unit number where output is saved.
     tomultfb : float
         Time-offset multiplier for head-dependent flow boundary observations.
         The product of tomultfb and toffset must produce a time value in units
         consistent with other model input. tomultfb can be dimensionless or
         can be used to convert the units of toffset to the time unit used in
         the simulation.
-    nqobfb : int list of length nqfb
-        The number of times at which flows are observed for the group of cells
-    nqclfb : int list of length nqfb
-        Is a flag, and the absolute value of nqclfb is the number of cells in
-        the group.  If nqclfb is less than zero, factor = 1.0 for all cells in
-        the group.
-    obsnam : string list of length nqtfb
-        Observation name
-    irefsp : int of length nqtfb
-        The zero-based stress period to which the observation time is
-        referenced.
-        The reference point is the beginning of the specified stress period.
-    toffset : float list of length nqtfb
-        Is the time from the beginning of the stress period irefsp to the time
-        of the observation.  toffset must be in units such that the product of
-        toffset and tomultfb are consistent with other model input.  For
-        steady state observations, specify irefsp as the steady state stress
-        period and toffset less than or equal to perlen of the stress period.
-        If perlen is zero, set toffset to zero.  If the observation falls
-        within a time step, linearly interpolation is used between values at
-        the beginning and end of the time step.
-    flwobs : float list of length nqtfb
-        Observed flow value from the head-dependent flow boundary into the
-        aquifer (+) or the flow from the aquifer into the boundary (-)
-    layer : int list of length(nqfb, nqclfb)
-        The zero-based layer index for the cell included in the cell group.
-    row : int list of length(nqfb, nqclfb)
-        The zero-based row index for the cell included in the cell group.
-    column : int list of length(nqfb, nqclfb)
-        The zero-based column index of the cell included in the cell group.
-    factor : float list of length(nqfb, nqclfb)
-        Is the portion of the simulated gain or loss in the cell that is
-        included in the total gain or loss for this cell group (fn of eq. 5).
+    obs_data : FlowObservation or list of FlowObservation instances
+        Each FlowObservation instance contains all observations for each group
+        of cells for which fluxes are desired. If obs_data
+        is None a default FlowObservation with layer, row, column, factor
+        (0, 0, 0, 1.) and a flux value of 0 at totim 0 will be created
+        (default is None).
     flowtype : string
         String that corresponds to the head-dependent flow boundary condition
         type (CHD, GHB, DRN, RIV)
     extension : list of string
         Filename extension. If extension is None, extension is set to
-        ['chob','obc','gbob','obg','drob','obd', 'rvob','obr']
-        (default is None).
+        ['chob','obc','gbob','obg','drob','obd', 'rvob','obr'] (default is
+        None).
     no_print : boolean
         When True or 1, a list of flow observations will not be
-        written to the Listing File (default is False)
+        written to the Listing File (default is False).
     options : list of strings
         Package options (default is None).
     unitnumber : list of int
@@ -101,38 +70,20 @@ class ModflowFlwob(Package):
     This represents a minimal working example that will be refactored in a
     future version.
 
+    Examples
+    --------
+
+
     """
 
-    def __init__(self, model, nqfb=0, nqcfb=0, nqtfb=0, iufbobsv=0,
-                 tomultfb=1.0, nqobfb=None, nqclfb=None, obsnam=None,
-                 irefsp=None, toffset=None, flwobs=None, layer=None,
-                 row=None, column=None, factor=None, flowtype=None,
-                 extension=None, no_print=False, options=None,
-                 filenames=None, unitnumber=None):
+    def __init__(self, model, iufbobsv=None, tomultfb=1.0, obs_data=None,
+                 flowtype=None, extension=None, no_print=False, options=None,
+                 unitnumber=None, filenames=None):
 
         """
         Package constructor
         """
-        if nqobfb is None:
-            nqobfb = []
-        if nqclfb is None:
-            nqclfb = []
-        if obsnam is None:
-            obsnam = []
-        if irefsp is None:
-            irefsp = []
-        if toffset is None:
-            toffset = []
-        if flwobs is None:
-            flwobs = []
-        if layer is None:
-            layer = []
-        if row is None:
-            row = []
-        if column is None:
-            column = []
-        if factor is None:
-            factor = []
+
         if extension is None:
             extension = ['chob', 'obc', 'gbob', 'obg', 'drob', 'obd',
                          'rvob', 'obr']
@@ -207,52 +158,21 @@ class ModflowFlwob(Package):
                          unit_number=unitnumber,
                          allowDuplicates=True, filenames=filenames)
 
-        self.nqfb = nqfb
-        self.nqcfb = nqcfb
-        self.nqtfb = nqtfb
-        self.iufbobsv = iufbobsv
         self.tomultfb = tomultfb
-        self.nqobfb = nqobfb
-        self.nqclfb = nqclfb
-        self.obsnam = obsnam
-        self.irefsp = irefsp
-        self.toffset = toffset
-        self.flwobs = flwobs
-        self.layer = layer
-        self.row = row
-        self.column = column
-        self.factor = factor
+        self.iufbobsv = iufbobsv
 
-        # -create empty arrays of the correct size
-        self.layer = np.zeros((self.nqfb, max(np.abs(self.nqclfb))),
-                              dtype='int32')
-        self.row = np.zeros((self.nqfb, max(np.abs(self.nqclfb))),
-                            dtype='int32')
-        self.column = np.zeros((self.nqfb, max(np.abs(self.nqclfb))),
-                               dtype='int32')
-        self.factor = np.zeros((self.nqfb, max(np.abs(self.nqclfb))),
-                               dtype='float32')
-        self.nqobfb = np.zeros((self.nqfb), dtype='int32')
-        self.nqclfb = np.zeros((self.nqfb), dtype='int32')
-        self.irefsp = np.zeros((self.nqtfb), dtype='int32')
-        self.toffset = np.zeros((self.nqtfb), dtype='float32')
-        self.flwobs = np.zeros((self.nqtfb), dtype='float32')
+        # create default
+        if obs_data is None:
+            obs_data = FlowObservation()
 
-        # -assign values to arrays
+        # make sure obs_data is a list
+        if isinstance(obs_data, FlowObservation):
+            obs_data = [obs_data]
 
-        self.nqobfb[:] = nqobfb
-        self.nqclfb[:] = nqclfb
-        self.obsnam[:] = obsnam
-        self.irefsp[:] = irefsp
-        self.toffset[:] = toffset
-        self.flwobs[:] = flwobs
-        for i in range(self.nqfb):
-            self.layer[i, :len(layer[i])] = layer[i]
-            self.row[i, :len(row[i])] = row[i]
-            self.column[i, :len(column[i])] = column[i]
-            self.factor[i, :len(factor[i])] = factor[i]
+        # add another check for obs_data is not None and not nested list?
 
-        # add more checks here
+        # set self.obs_data
+        self.obs_data = obs_data
 
         self.no_print = no_print
         self.np = 0
@@ -264,6 +184,40 @@ class ModflowFlwob(Package):
 
         # add checks for input compliance (obsnam length, etc.)
         self.parent.add_package(self)
+
+        # determine the dimensions of FLWOB data
+        self._set_dimensions()
+
+    def _set_dimensions(self):
+        """
+        Set the length of the obs_data list
+
+        Returns
+        -------
+        None
+
+        """
+        # make sure each entry of obs_data list is a FlowObservation instance
+        # and calculate nqobfb and nqclfb
+        msg = ''
+        self.nqobfb = []
+        self.nqclfb = []
+
+        for idx, obs in enumerate(self.obs_data):
+            if not isinstance(obs, FlowObservation):
+                msg += 'ModflowFlwob: obs_data entry {} '.format(idx) + \
+                       'is not a FlowObservation instance.\n'
+                continue
+            self.nqobfb.append(len(obs.time_series_data))
+            self.nqclfb.append(len(obs.cell_group_data))
+
+        self.nqfb = len(self.obs_data)
+        self.nqcfb = sum(self.nqclfb)
+        self.nqtfb = sum(self.nqobfb)
+
+        if msg != '':
+            raise ValueError(msg)
+        return
 
     def write_file(self):
         """
@@ -292,7 +246,6 @@ class ModflowFlwob(Package):
         f_fbob.write('{:10e}\n'.format(self.tomultfb))
 
         # write sections 3-5 looping through observations groups
-        c = 0
         for i in range(self.nqfb):
             #        while (i < self.nqfb):
             # write section 3
@@ -300,27 +253,23 @@ class ModflowFlwob(Package):
                                                  self.nqclfb[i]))
 
             # Loop through observation times for the groups
+            tsd = self.obs_data[i].time_series_data
             for j in range(self.nqobfb[i]):
                 # write section 4
-                line = '{:12}'.format(self.obsnam[c])
-                line += '{:8d}'.format(self.irefsp[c] + 1)
-                line += '{:16.10g}'.format(self.toffset[c])
-                line += ' {:10.4g}\n'.format(self.flwobs[c])
+                line = '{:12}'.format(tsd.obsname[j].decode())
+                line += '{:8d}'.format(tsd.irefsp[j] + 1)
+                line += '{:16.10g}'.format(tsd.toffset[j])
+                line += ' {:10.4g}\n'.format(tsd.flwobs[j])
                 f_fbob.write(line)
-                c += 1  # index variable
 
-                # write section 5 - NOTE- need to adjust factor for multiple
-                # observations in the same cell
-            for j in range(abs(self.nqclfb[i])):
-                # set factor to 1.0 for all cells in group
-                if self.nqclfb[i] < 0:
-                    self.factor[i, :] = 1.0
-                line = '{:10d}'.format(self.layer[i, j] + 1)
-                line += '{:10d}'.format(self.row[i, j] + 1)
-                line += '{:10d}'.format(self.column[i, j] + 1)
-                line += ' '.format(self.factor[i, j])
+            # write section 5 - NOTE- need to adjust factor for multiple
+            # observations in the same cell
+            for j in range(self.nqclfb[i]):
+                line = '{:10d}'.format(self.obs_data[i].layer[j] + 1)
+                line += '{:10d}'.format(self.obs_data[i].row[j] + 1)
+                line += '{:10d}'.format(self.obs_data[i].column[j] + 1)
                 # note is 10f good enough here?
-                line += '{:10f}\n'.format(self.factor[i, j])
+                line += '{:10f}\n'.format(self.obs_data[i].factor[j])
                 f_fbob.write(line)
 
         f_fbob.close()
@@ -334,8 +283,10 @@ class ModflowFlwob(Package):
         f_ins = open(sfname, 'w')
         f_ins.write('jif @\n')
         f_ins.write('StandardFile 0 1 {}\n'.format(self.nqtfb))
-        for i in range(0, self.nqtfb):
-            f_ins.write('{}\n'.format(self.obsnam[i]))
+        for i in range(self.nqfb):
+            obs = self.obs_data[i]
+            for j in range(self.nqtfb):
+                f_ins.write('{}\n'.format(obs.time_series_data[j].obsname))
 
         f_ins.close()
         # swm: END hack for writing standard file
@@ -426,74 +377,66 @@ class ModflowFlwob(Package):
         t = line.strip().split()
         tomultfb = float(t[0])
 
-        nqobfb = np.zeros(nqfb, dtype=np.int32)
-        nqclfb = np.zeros(nqfb, dtype=np.int32)
-        obsnam = []
-        irefsp = []
-        toffset = []
-        flwobs = []
-
-        layer = []
-        row = []
-        column = []
-        factor = []
-
         # read datasets 3, 4, and 5 for each of nqfb groups
         # of cells
         nobs = 0
+        flwobs = []
         while True:
 
             # read dataset 3 -- NQOBFB NQCLFB
             line = f.readline()
             t = line.strip().split()
-            nqobfb[nobs] = int(t[0])
-            nqclfb[nobs] = int(t[1])
+            nqobfb = int(t[0])
+            nqclfb = int(t[1])
 
             # read dataset 4 -- OBSNAM IREFSP TOFFSET FLWOBS
+            names = []
+            tsd = []
             ntimes = 0
             while True:
                 line = f.readline()
                 t = line.strip().split()
-                obsnam.append(t[0])
-                irefsp.append(int(t[1]))
-                toffset.append(float(t[2]))
-                flwobs.append(float(t[3]))
+                names.append(t[0])
+                irefsp = int(t[1]) - 1
+                toffset = float(t[2])
+                flwob = float(t[3])
+                totim = model.dis.get_totim_from_kper_toffset(irefsp,
+                                                              toffset *
+                                                              tomultfb)
+                tsd.append([totim, flwob])
                 ntimes += 1
-                if ntimes == nqobfb[nobs]:
+                if ntimes == nqobfb:
                     break
 
             # read dataset 5 -- Layer Row Column Factor
-            k = np.zeros(abs(nqclfb[nobs]), np.int32)
-            i = np.zeros(abs(nqclfb[nobs]), np.int32)
-            j = np.zeros(abs(nqclfb[nobs]), np.int32)
-            fac = np.zeros(abs(nqclfb[nobs]), np.float32)
-
+            cgd = []
             ncells = 0
             while True:
                 line = f.readline()
                 t = line.strip().split()
-                k[ncells] = int(t[0])
-                i[ncells] = int(t[1])
-                j[ncells] = int(t[2])
-                fac[ncells] = float(t[3])
+                k = int(t[0]) - 1
+                i = int(t[1]) - 1
+                j = int(t[2]) - 1
+                fac = float(t[3])
+                cgd.append((k, i, j, fac))
 
                 ncells += 1
-                if ncells == abs(nqclfb[nobs]):
-                    layer.append(k)
-                    row.append(i)
-                    column.append(j)
-                    factor.append(fac)
+                if ncells == abs(nqclfb):
                     break
+
+            if nqclfb < 0:
+                factor = np.ones(abs(nqclfb), np.float32)
 
             nobs += 1
             if nobs == nqfb:
+                # create FlowObservation instance
+                flwob = FlowObservation(model,
+                                        tomultfb=tomultfb,
+                                        cell_group_data=cgd,
+                                        time_series_data=tsd,
+                                        names=names)
+                flwobs.append(flwob)
                 break
-
-        irefsp = np.array(irefsp) - 1
-        layer = np.array(layer) - 1
-        row = np.array(row) - 1
-        column = np.array(column) - 1
-        factor = np.array(factor)
 
         # close the file
         f.close()
@@ -512,12 +455,199 @@ class ModflowFlwob(Package):
 
         # create ModflowFlwob object instance
         flwob = ModflowFlwob(model, iufbobsv=iufbobsv, tomultfb=tomultfb,
-                             nqfb=nqfb, nqcfb=nqcfb,
-                             nqtfb=nqtfb, nqobfb=nqobfb, nqclfb=nqclfb,
-                             obsnam=obsnam, irefsp=irefsp, toffset=toffset,
-                             flwobs=flwobs, layer=layer, row=row,
-                             column=column, factor=factor, options=options,
+                             obs_data=flwobs, options=options,
                              flowtype=flowtype, unitnumber=unitnumber,
                              filenames=filenames)
 
         return flwob
+
+
+class FlowObservation(object):
+    """
+    Create single FlowObservation instance. Each instance of this class
+    consists of a group of one or more cells to which the associated
+    timeseries data pertain. A list of FlowObservation instances are passed to
+    the ModflowFlwob package.
+
+    Parameters
+    ----------
+    model : model object
+        The model object (of type :class:`flopy.modflow.mf.Modflow`) to which
+        this package will be added.
+    tomultfb : float
+        Time-offset multiplier for flow observations. Default is 1.
+    obsname : string
+        Observation name. Default is 'FLWOBS'.
+    cell_group_data : list of tuples
+        Each tuple is defined by a layer(int), row(int), column(int), and
+        factor(float), where factor is the portion of the simulated flow in the
+        cell that is included in the total simulated flow for this cell group.
+        This gives the form of::
+
+            cell_group_data =
+            [
+                (layer, row, column, factor),
+                (layer, row, column, factor),
+                (layer, row, column, factor)
+            ]
+
+        Default is [(0, 0, 0, 1.)].
+    time_series_data : list or numpy array
+        Two-dimensional list or numpy array containing the simulation time of
+        the observation and the observed flux [[totim, flwob]]. If
+        time_series_data is None, a default observation of 0. at
+        totim 0. will be created (default is None).
+    names : list
+        List of specified observation names. If names is None, observation
+        names will be automatically generated from obsnam and the order
+        of the timeseries data (default is None).
+
+    Returns
+    -------
+    obs : FlowObservation
+        FlowObservation object.
+
+    Examples
+    --------
+    >>> import flopy
+    >>> model = flopy.modflow.Modflow()
+    >>> dis = flopy.modflow.ModflowDis(model, nlay=1, nrow=11, ncol=11, nper=2,
+    ...                                perlen=[1,1])
+    >>> tsd = [[1., -54.4], [2., -55.2]]
+    >>> obsdata = flopy.modflow.FlowObservation(model, time_series_data=tsd)
+
+    """
+    def __init__(self, model, tomultfb=1., obsname='FLWOBS',
+                 cell_group_data=None, time_series_data=None, names=None):
+
+        """
+        NOTES:
+
+        1) ModflowFlwob also gets tomultfb (dataset 2), what to do here?
+
+        2) irefsp doesn't actually get used when populating the timeseries
+        data. kper is populated from model.dis.get_kstp_kper_toffset(t).
+        References to irefsp have been removed.
+
+        3) "obsname" is mistakenly listed as "obsnam" in the ModflowHob
+        docstring.
+
+        4) Explicitly pass factor for each cell in the cell group. Since we
+        are using python there's no reason not to.
+
+        5)
+
+        """
+
+        if cell_group_data is None:
+            cell_group_data = [(0, 0, 0, 1.)]
+
+        for idx, cgp in enumerate(cell_group_data):
+            msg = 'Length of cell group {} must be 4; e.g. (layer, row, ' \
+                  'column, factor).'.format(idx + 1)
+            assert len(cgp) == 4, msg
+
+            # convert negative factor values to 1.
+            if cgp[3] < 0:
+                cgp[3] = 1.
+
+            # check type of each value?
+
+        self.cell_group_data = cell_group_data
+        self.layer = list([i[0] for i in cell_group_data])
+        self.row = list([i[1] for i in cell_group_data])
+        self.column = list([i[2] for i in cell_group_data])
+        self.factor = list([i[3] for i in cell_group_data])
+
+        # convert passed time_series_data to a numpy array
+        if isinstance(time_series_data, list):
+            time_series_data = np.array(time_series_data, dtype=np.float)
+
+        # if a single observation is passed as a list reshape to a
+        # two-dimensional numpy array
+        if len(time_series_data.shape) == 1:
+            time_series_data = np.reshape(time_series_data, (1, 2))
+
+        # find indices of time series data that are valid
+        tmax = model.dis.get_final_totim()
+        keep_idx = time_series_data[:, 0] <= tmax
+        time_series_data = time_series_data[keep_idx, :]
+
+        # set the number of observations in this time series
+        shape = time_series_data.shape
+        self.nobs = shape[0]
+
+        # construct names if not passed
+        if names is None:
+            if self.nobs == 1:
+                names = [obsname]
+            else:
+                names = []
+                for idx in range(self.nobs):
+                    names.append('{}.{}'.format(obsname, idx + 1))
+        # make sure the length of names is greater than or equal to nobs
+        else:
+            if isinstance(names, str):
+                names = [names]
+            elif not isinstance(names, list):
+                msg = 'FlowObservation names must be a ' + \
+                      'string or a list of strings'
+                raise ValueError(msg)
+            if len(names) < self.nobs:
+                msg = 'a name must be specified for every valid ' + \
+                      'observation - {} '.format(len(names)) + \
+                      'names were passed but at least ' + \
+                      '{} names are required.'.format(self.nobs)
+                raise ValueError(msg)
+
+        # create time_series_data
+        self.time_series_data = self._get_empty(ncells=shape[0])
+        for idx in range(self.nobs):
+            t = time_series_data[idx, 0]
+            kstp, kper, toffset = model.dis.get_kstp_kper_toffset(t)
+            self.time_series_data[idx]['totim'] = t
+            self.time_series_data[idx]['irefsp'] = kper
+            self.time_series_data[idx]['toffset'] = toffset / tomultfb
+            self.time_series_data[idx]['flwobs'] = time_series_data[idx, 1]
+            self.time_series_data[idx]['obsname'] = names[idx]
+
+        return
+
+    def _get_empty(self, ncells=0):
+        """
+        Get an empty time_series_data recarray for a HeadObservation
+
+        Parameters
+        ----------
+        ncells : int
+            number of time entries in a HeadObservation
+
+        Returns
+        -------
+        d : np.recarray
+
+        """
+        # get an empty recarray that corresponds to dtype
+        dtype = self._get_dtype()
+        d = create_empty_recarray(ncells, dtype, default_value=-1.0E+10)
+        d['obsname'] = ''
+        return d
+
+    @staticmethod
+    def _get_dtype():
+        """
+        Get the dtype for FlowObservation time_series_data
+
+
+        Returns
+        -------
+        dtype : np.dtype
+
+        """
+        # get the default FLWOB dtype
+        dtype = np.dtype([("totim", np.float32),
+                          ("irefsp", np.int),
+                          ("toffset", np.float32),
+                          ("flwobs", np.float32),
+                          ("obsname", '|S12')])
+        return dtype

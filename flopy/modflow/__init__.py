@@ -45,7 +45,7 @@ from .mfsub import ModflowSub
 from .mfswt import ModflowSwt
 from .mfhyd import ModflowHyd
 from .mfhob import ModflowHob, HeadObservation
-from .mfflwob import ModflowFlwob
+from .mfflwob import ModflowFlwob, FlowObservation
 from .mfaddoutsidefile import mfaddoutsidefile
 
 # unstructured

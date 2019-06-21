@@ -18,6 +18,8 @@ if os.path.isdir(cpth):
     shutil.rmtree(cpth)
 
 exe_name = 'mf2005'
+exe_name = r'C:\Users\jbellino\Documents\Programs\modflow\MF2005.1_12\bin' \
+           r'\mf2005.exe'
 v = flopy.which(exe_name)
 
 run = True
@@ -295,37 +297,21 @@ def test_flwob_load():
     drn = flopy.modflow.ModflowDrn(m, 53, stress_period_data=spd)
 
     # flow observation
+    cgd = [(0, 5, 5, 1.),
+           (0, 8, 8, 1.)]
 
-    # Lists of length nqfb
-    nqobfb = [1, 1]
-    nqclfb = [1, 1]
+    names = ['drob_1', 'drob_2']
+    tsd = np.array([[1., -5.678],
+                    [87163., -6.874]])
 
-    # Lists of length nqtfb
-    obsnam = ['drob_1', 'drob_2']
-    irefsp = [0, 0]
-    toffset = [0, 0]
-    flwobs = [-5.678, -6.874]
-
-    # Lists of length (nqfb, nqclfb)
-    layer = [[0], [0]]
-    row = [[5], [8]]
-    column = [[5], [8]]
-    factor = [[1.], [1.]]
+    flwobs = flopy.modflow.FlowObservation(m,
+                                           cell_group_data=cgd,
+                                           time_series_data=tsd,
+                                           names=names)
 
     drob = flopy.modflow.ModflowFlwob(m,
-                                      nqfb=len(nqclfb),
-                                      nqcfb=np.sum(nqclfb),
-                                      nqtfb=np.sum(nqobfb),
-                                      nqobfb=nqobfb,
-                                      nqclfb=nqclfb,
-                                      obsnam=obsnam,
-                                      irefsp=irefsp,
-                                      toffset=toffset,
-                                      flwobs=flwobs,
-                                      layer=layer,
-                                      row=row,
-                                      column=column,
-                                      factor=factor,
+                                      tomultfb=1.,
+                                      obs_data=flwobs,
                                       flowtype='drn',
                                       options=['NOPRINT'])
     # Write the model input files
@@ -345,18 +331,24 @@ def test_flwob_load():
     assert (drob.nqcfb == m.drob.nqcfb), s
     s = 'nqtfb loaded from {} read incorrectly'.format(m.drob.fn_path)
     assert (drob.nqtfb == m.drob.nqtfb), s
-    s = 'obsnam loaded from {} read incorrectly'.format(m.drob.fn_path)
-    assert (list([n for n in drob.obsnam]) ==
-            list([n for n in m.drob.obsnam])), s
-    s = 'flwobs loaded from {} read incorrectly'.format(m.drob.fn_path)
-    assert np.array_equal(drob.flwobs, m.drob.flwobs), s
-    s = 'layer loaded from {} read incorrectly'.format(m.drob.fn_path)
-    assert np.array_equal(drob.layer, m.drob.layer), s
-    s = 'row loaded from {} read incorrectly'.format(m.drob.fn_path)
-    assert np.array_equal(drob.row, m.drob.row), s
-    s = 'column loaded from {} read incorrectly'.format(m.drob.fn_path)
-    assert np.array_equal(drob.column, m.drob.column), s
 
+    # compare timeseries data
+    otsd = [drob.obs_data[i].time_series_data for
+            i in range(len(drob.obs_data))]
+    tsd = [m.drob.obs_data[i].time_series_data for
+           i in range(len(m.drob.obs_data))]
+    s = 'timeseries data read incorrectly from {}'.format(
+        m.drob.fn_path)
+    assert np.array_equal(otsd, tsd), s
+
+    # compare cell group data
+    ocgd = [drob.obs_data[i].cell_group_data for
+            i in range(len(drob.obs_data))]
+    cgd = [m.drob.obs_data[i].cell_group_data for
+           i in range(len(m.drob.obs_data))]
+    s = 'cell group data read incorrectly from {}'.format(
+        m.drob.fn_path)
+    assert np.array_equal(ocgd, cgd), s
     return
 
 
