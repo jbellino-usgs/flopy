@@ -18,8 +18,6 @@ if os.path.isdir(cpth):
     shutil.rmtree(cpth)
 
 exe_name = 'mf2005'
-exe_name = r'C:\Users\jbellino\Documents\Programs\modflow\MF2005.1_12\bin' \
-           r'\mf2005.exe'
 v = flopy.which(exe_name)
 
 run = True
