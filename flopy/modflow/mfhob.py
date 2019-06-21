@@ -11,6 +11,9 @@ class ModflowHob(Package):
 
     Parameters
     ----------
+    model : model object
+        The model object (of type :class:`flopy.modflow.mf.Modflow`) to which
+        this package will be added.
     iuhobsv : int
         unit number where output is saved. If iuhobsv is None, a unit number
         will be assigned (default is None).
@@ -455,6 +458,9 @@ class HeadObservation(object):
 
     Parameters
     ----------
+    model : model object
+        The model object (of type :class:`flopy.modflow.mf.Modflow`) to which
+        this package will be added.
     tomulth : float
         Time-offset multiplier for head observations. Default is 1.
     obsnam : string
